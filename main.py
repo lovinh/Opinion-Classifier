@@ -1,3 +1,9 @@
+
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+
 import json
 from libs.tf_idf import *
 from libs.utils import *
@@ -54,8 +60,14 @@ if __name__ == "__main__":
 
         X = tf_idf_transform(idf_term, vocabulary, tokens)
 
-        print(X.columns)
+        # print(X.columns)
 
+        prediction = model.predict([X.iloc[0]])
+        if prediction == [0]:
+            print("Dự đoán: Positive")
+        if prediction == [2]:
+            print("Dự đoán: Negative")
+        if prediction == [1]:
+            print("Dự đoán: Neutral")
         print('Dự đoán: ' + str(model.predict([X.iloc[0]])))
-
         print("Độ chính xác dự đoán: " + str(max(model.predict_proba([X.iloc[0]]))))
