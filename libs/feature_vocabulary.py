@@ -1,11 +1,16 @@
 import math
 import numpy as np
 import pandas as pd
-from tf_idf import features_extraction
 import os
-from utils import *
 import string
 import re
+
+def features_extraction(corpus: list[list[str]]) -> set[str]:
+    features: set = set()
+    for document in corpus:
+        for term in document:
+            features.add(term)
+    return features
 
 string_pattele = string.punctuation + '\n'
 
@@ -79,10 +84,35 @@ def entropy_score(n_class_samples: list[int]) -> float:
 
 
 class feature_vocabulary_transfer:
+    '''
+    Lớp cho phép tạo một từ điển các từ mang đặc trưng của một lớp cụ thể nào đó trích xuất từ một tập dữ liệu.
+    
+    Đặc trưng ở đây tức là ứng với từ này thì mang hàm ý thuộc về lớp này nhiều hơn. Nếu trong câu gặp từ đặc trưng của một lớp nào đó thì ta có cơ sở để kết luận câu đó có vẻ thuộc lớp mà từ đó đặc trưng.
+    
+    Parameters
+    ---
+        metrics: str. Chỉ có hai giá trị là ```gini``` và ```entropy```. Phương thức đo độ tạp chất của từ. Nếu ```metrics='gini'```, độ tạp chất được đo bởi điểm số gini. Ngược lại đo bởi điểm số Entropy.
+ 
+    '''
     def __init__(self, metrics: str) -> None:
         self.__metrics = metrics
 
     def fit(self, corpus: list[list[str]] | np.ndarray, labels_corpus: list[str] | np.ndarray | pd.Series) -> None:
+        '''
+        Áp dụng kho văn bản và tập nhãn tương ứng với kho văn bản để khớp vào mô hình.
+        
+        Mô hình sẽ tính toán phân phối tần số của tập từ phân biệt trích ra từ kho văn bản theo các lớp trong tập nhãn. Đồng thời tính toán độ tạp chất tương ứng của các từ trong tập từ phân biệt đó trong các lớp.
+
+        Parameters
+        ---
+            corpus: Kho văn bản. Là một ma trận (n,). Mỗi hàng biểu diễn một văn bản. Mỗi văn bản là một mảng (1,) gồm nhiều từ đơn vị.
+
+            labels_corpus: Tập nhãn ứng với từng văn bản. Kích thước (n,1)
+        
+        Return
+        ---
+            None
+        '''
         self.__labels_corpus: list[str] | np.ndarray | pd.Series = labels_corpus
         self.__labels: list[str] = list(set(labels_corpus))
         self.__corpus: list[list[str]] | np.ndarray | pd.DataFrame = corpus
@@ -95,7 +125,6 @@ class feature_vocabulary_transfer:
 
         self.__corpus_vocabulary: np.ndarray = np.array(
             corpus_vocabulary)
-        print(self.__corpus_vocabulary)
         for distribution_label in self.__frequency_distributions:
             for token in self.__corpus_vocabulary:
                 self.__frequency_distributions[distribution_label][token] = 0
@@ -123,11 +152,27 @@ class feature_vocabulary_transfer:
                 )
 
     def transform(self, threshold: float = 0.0, min_samples: int = 0, is_sorted: bool = True, is_reversed: bool = False) -> dict[str, str]:
+        '''
+        Tạo ra tập từ điển đặc trưng dựa trên các tham số chỉ định đặc biệt. Các dữ liệu tính toán phải được tính sau bước fit.
+        
+        Parameters
+        ---
+            threshold: Một giá trị thực biểu thị mốc tạp chất tối đa để từ đó được coi là đặc trưng. Nếu độ tạp chất của từ vượt qua mốc, từ đó không được coi là đặc trưng của lớp nào.
+
+            min_samples: Một giá trị nguyên biểu thị tổng số văn bản mà từ đó thuộc vào tối thiểu để được coi là đủ đặc trưng. Nếu số văn bản chứa từ đó ít hơn min_samples, tức là từ đó không đủ phổ biến trong kho văn bản để được coi là đặc trưng.
+        
+            is_sorted: Giá trị boolean. Nếu is_sorted=```True```, tập từ điển được sắp xếp theo chiều tăng trong bảng ascii và ngược lại.
+
+            is_reversed: Giá trị boolean biểu thị sắp xếp theo chiều tăng dần hay giảm dần. Bị bỏ qua nếu is_sorted=```False```.
+
+        Return
+        ---
+            Một dictionary chứa các từ đặc trưng cho từng lớp của kho văn bản.
+
+        '''
         self.__feature_vocabulary: dict[str, str] = {}
         score_vocabulary = self.get_impute_score(is_sorted, is_reversed)
-        print(score_vocabulary)
         for key in score_vocabulary:
-            # print(key)
             total_sample = 0
             for distribution in self.__frequency_distributions:
                 total_sample += self.__frequency_distributions[distribution][key]
@@ -144,28 +189,82 @@ class feature_vocabulary_transfer:
 
         return self.__feature_vocabulary
 
+    def fit_transform(self, corpus: list[list[str]] | np.ndarray, labels_corpus: list[str] | np.ndarray | pd.Series, threshold: float = 0.0, min_samples: int = 0, is_sorted: bool = True, is_reversed: bool = False) -> dict[str, str]:
+        '''
+        Áp dụng kho văn bản và tập nhãn tương ứng với kho văn bản để khớp vào mô hình và sau đó tạo ra tập từ điển đặc trưng dựa trên các tham số chỉ định đặc biệt. 
+        
+        Mô hình sẽ tính toán phân phối tần số của tập từ phân biệt trích ra từ kho văn bản theo các lớp trong tập nhãn. Đồng thời tính toán độ tạp chất tương ứng của các từ trong tập từ phân biệt đó trong các lớp.
+
+        Sau khi tính toán phân phối, dựa theo tham số chỉ định tạo ra tập từ điển đặc trưng. 
+        
+        Parameters
+        ---
+            corpus: Kho văn bản. Là một ma trận (n,). Mỗi hàng biểu diễn một văn bản. Mỗi văn bản là một mảng (1,) gồm nhiều từ đơn vị.
+
+            labels_corpus: Tập nhãn ứng với từng văn bản. Kích thước (n,1)
+        
+            threshold: Một giá trị thực biểu thị mốc tạp chất tối đa để từ đó được coi là đặc trưng. Nếu độ tạp chất của từ vượt qua mốc, từ đó không được coi là đặc trưng của lớp nào.
+
+            min_samples: Một giá trị nguyên biểu thị tổng số văn bản mà từ đó thuộc vào tối thiểu để được coi là đủ đặc trưng. Nếu số văn bản chứa từ đó ít hơn min_samples, tức là từ đó không đủ phổ biến trong kho văn bản để được coi là đặc trưng.
+        
+            is_sorted: Giá trị boolean. Nếu is_sorted=```True```, tập từ điển được sắp xếp theo chiều tăng trong bảng ascii và ngược lại.
+
+            is_reversed: Giá trị boolean biểu thị sắp xếp theo chiều tăng dần hay giảm dần. Bị bỏ qua nếu is_sorted=```False```.
+
+        Return
+        ---
+            Một dictionary chứa các từ đặc trưng cho từng lớp của kho văn bản.
+        '''
+        self.fit(corpus, labels_corpus)
+        return self.transform(threshold, min_samples, is_sorted, is_reversed)
+
     @property
     def labels(self) -> list[str] | np.ndarray | pd.Series:
+        '''
+        Trả về tập nhãn của kho văn bản
+        '''
         return self.__labels
 
     @property
     def frequency_distributions(self) -> dict[str, dict[str, int]]:
+        '''
+        Trả về bảng tần suất của từng lớp.
+        '''
         return self.__frequency_distributions
 
     def get_frequency_distributions(self, class_label: str) -> dict[str, int]:
+        """
+        cho phép truy xuất bảng tần suất của một lớp cụ thể
+        """
         if not (class_label in self.__labels):
             raise KeyError(class_label)
         return self.__frequency_distributions.get(class_label)
 
     @property
     def impute_score(self) -> dict[str, float]:
+        """
+        Trả về độ tạp chất của từng từ phân biệt của kho văn bản.
+        """
         return self.__score_vocabulary
 
     def get_impute_score(self, is_sorted: bool = True, is_reversed: bool = False) -> dict[str, float]:
+        """
+        Trả về độ tạp chất của từng từ phân biệt của kho văn bản. Tuy nhiên cho phép sắp xếp
+        """
         if is_sorted:
             return dict(sorted(self.__score_vocabulary.items(), reverse=is_reversed, key=lambda x: x[1]))
         return self.__score_vocabulary
 
     @property
     def feature_vocabulary(self) -> dict[str, str]:
+        """
+        Trả về danh sách từ điển đặc trưng
+        """
         return self.__feature_vocabulary
+
+    def get_feature_vocabulary(self, labels : str) -> list[str]:
+        res = []
+        for key in self.__feature_vocabulary:
+            if self.__feature_vocabulary[key] == labels:
+                res.append(key)
+        return res
