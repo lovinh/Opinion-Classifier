@@ -36,7 +36,7 @@ def tf_idf_transform(idf, vocabulary, sentence):
 
 if __name__ == "__main__":
     model = load_model(
-        r"E:\Learn Machine Learning\Project\Opinion Classifier\res\tf-idf\logistic_regression.pkl")
+        r"E:\Learn Machine Learning\Project\Opinion Classifier\res\tf-idf\linear_svc.pkl")
 
     with open(r"E:\Learn Machine Learning\Project\Opinion Classifier\res\tf-idf\idf_term.pkl", "rb") as f:
         idf_term: dict[str, float] = pickle.load(f)
@@ -70,4 +70,4 @@ if __name__ == "__main__":
         if prediction == [1]:
             print("Dự đoán: Neutral")
         print('Dự đoán: ' + str(model.predict([X.iloc[0]])))
-        print("Độ chính xác dự đoán: " + str(max(model.predict_proba([X.iloc[0]]))))
+        # print("Độ chính xác dự đoán: " + str(max(model.predict_proba([X.iloc[0]]))))
